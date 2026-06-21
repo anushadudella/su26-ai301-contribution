@@ -1,7 +1,7 @@
 # AI301 Contribution README
 
 ## Status
-Phase I Complete
+Phase II Complete
 
 ## Issue
 https://github.com/saleor/saleor/issues/15138
