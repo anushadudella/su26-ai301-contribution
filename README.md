@@ -69,8 +69,13 @@ use conventional commit message format, ensure all existing tests pass.
 **Evaluate:** New unit test should pass confirming logger.error fires inside 
 a transaction. Existing test suite should show no regressions.
 
-## Phase III
-Coming soon.
+[## Phase III
+
+**Implementation Notes:** Added `connection.in_atomic_block` check inside `send_webhook_request_sync` in `saleor/webhook/transport/synchronous/transport.py`. Also added `connection` to the existing `from django.db import` statement.
+
+**Testing Strategy:** Added 1 new unit test `test_send_webhook_request_sync_logs_error_inside_transaction` in `test_transport.py`. All 7 tests pass.
+
+**Code Changes:** https://github.com/anushadudella/saleor/tree/fix-issue-15138
 
 ## Phase IV
 Coming soon.
