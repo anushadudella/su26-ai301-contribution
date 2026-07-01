@@ -75,7 +75,10 @@ a transaction. Existing test suite should show no regressions.
 
 **Testing Strategy:** Added 1 new unit test `test_send_webhook_request_sync_logs_error_inside_transaction` in `test_transport.py`. All 7 tests pass.
 
-**Code Changes:** https://github.com/anushadudella/saleor/tree/fix-issue-15138
-
 ## Phase IV
-Coming soon.
+
+**PR Link:** https://github.com/saleor/saleor/pull/19390
+**Status:** Awaiting review
+**Summary:** Added `connection.in_atomic_block` check in `send_webhook_request_sync` to log an error when sync webhooks are called inside a DB transaction. Includes 1 new unit test confirming the logger fires when called inside a transaction.
+
+**Code Changes:** https://github.com/anushadudella/saleor/tree/fix-issue-15138
