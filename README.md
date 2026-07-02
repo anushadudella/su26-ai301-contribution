@@ -82,3 +82,6 @@ a transaction. Existing test suite should show no regressions.
 **Summary:** Added `connection.in_atomic_block` check in `send_webhook_request_sync` to log an error when sync webhooks are called inside a DB transaction. Includes 1 new unit test confirming the logger fires when called inside a transaction.
 
 **Code Changes:** https://github.com/anushadudella/saleor/tree/fix-issue-15138
+
+**Maintainer Feedback:** Reviewer requested changing `logger.error` to `logger.warning` with `stack_info=True` to match async transport pattern. Updated and pushed in commits 4c4e407 and 709068f.
+**Status:** Awaiting review (updated per feedback)
