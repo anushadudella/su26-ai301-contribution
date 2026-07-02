@@ -85,3 +85,7 @@ a transaction. Existing test suite should show no regressions.
 
 **Maintainer Feedback:** Reviewer requested changing `logger.error` to `logger.warning` with `stack_info=True` to match async transport pattern. Updated and pushed in commits 4c4e407 and 709068f.
 **Status:** Awaiting review (updated per feedback)
+
+**Status:** Closed by maintainer (duplicate of #19354 which covers the same fix)
+
+**Outcome:** PR received maintainer review, feedback was addressed (logger.error → logger.warning with stack_info=True), and PR was closed as a duplicate of an existing contribution. Implementation was correct.
