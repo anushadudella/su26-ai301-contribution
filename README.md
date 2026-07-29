@@ -1,91 +1,89 @@
 # AI301 Contribution README
 
 ## Status
-Phase II Complete
+Phase IV Complete
 
 ## Issue
-https://github.com/saleor/saleor/issues/15138
+[saleor/saleor#15138](https://github.com/saleor/saleor/issues/15138)
 
 ## Why I Chose This Issue
-Saleor's sync webhooks are sometimes called inside Django database transactions, which is incorrect behavior that can cause subtle bugs. The fix requires adding a generic `logger.error` condition that fires whenever a sync webhook is called within a transaction. This makes it easy to detect all such cases across the codebase. I chose it because it's a well-scoped Python/Django task with clear acceptance criteria from a core maintainer.
+Saleor's sync webhooks are sometimes called inside Django database transactions, which is incorrect behavior that can cause subtle bugs. The fix requires adding a generic `logger.warning` condition that fires whenever a sync webhook is called within a transaction. This makes it easy to detect all such cases across the codebase. I chose it because it's a well-scoped Python/Django task with clear acceptance criteria from a core maintainer.
 
 ## Phase II
 
 ### Environment Setup
-Cloned fork to local machine on macOS. Created working branch `fix-issue-15138` 
-and pushed to remote. No Docker setup required to reproduce — the issue is 
-identifiable through static code analysis and a unit test.
+Cloned fork to local machine on macOS. Created working branch `fix-issue-15138` and pushed to remote. No Docker setup required to reproduce — the issue is identifiable through static code analysis and a unit test.
 
 **Working branch:** https://github.com/anushadudella/saleor/tree/fix-issue-15138
 
 ### Steps to Reproduce
 1. Clone the repo and open `saleor/webhook/transport/synchronous/transport.py`
 2. Navigate to `send_webhook_request_sync` at line 195
-3. Note it makes an outbound HTTP call via `_send_webhook_request_sync` with 
-   no check for whether a database transaction is currently active
-4. **Expected:** A `logger.error(...)` warning is emitted whenever this function 
-   is called inside an active Django transaction
-5. **Actual:** No such warning exists — the call proceeds silently inside 
-   transactions, risking data inconsistency if the transaction rolls back
+3. Note it makes an outbound HTTP call via `_send_webhook_request_sync` with no check for whether a database transaction is currently active
+4. **Expected:** A `logger.warning(...)` is emitted whenever this function is called inside an active Django transaction
+5. **Actual:** No such warning exists — the call proceeds silently inside transactions, risking data inconsistency if the transaction rolls back
 
 ### Solution Plan
 
-**Understand:** `send_webhook_request_sync` dispatches live HTTP calls to 
-external apps. Calling it inside a Django `transaction.atomic()` block is 
-dangerous — if the DB transaction rolls back, the external app has already 
-acted on data that never committed. There is currently no logging guard to 
-detect this pattern anywhere in the codebase.
+**Understand:** `send_webhook_request_sync` dispatches live HTTP calls to external apps. Calling it inside a Django `transaction.atomic()` block is dangerous — if the DB transaction rolls back, the external app has already acted on data that never committed. There is currently no logging guard to detect this pattern anywhere in the codebase.
 
-**Match:** Django provides `connection.in_atomic_block` to detect active 
-transactions at runtime. The file already has `logger` defined at line 63 
-and imports `from django.db import transaction` at line 9, so no new imports 
-are needed.
+**Match:** Django provides `connection.in_atomic_block` to detect active transactions at runtime. The file already has `logger` defined at line 63 and imports `from django.db import transaction` at line 9.
 
 **Plan:**
-1. Add `from django.db import connection` to the imports in 
-   `saleor/webhook/transport/synchronous/transport.py`
-2. Add this check at the top of `send_webhook_request_sync` (line 195):
-```python
-   if connection.in_atomic_block:
-       logger.error(
-           "Sync webhook called inside a database transaction. "
-           "Event: %s. This may cause data inconsistency if the "
-           "transaction is rolled back.",
-           delivery.event_type,
-       )
-```
-3. Add a unit test in 
-   `saleor/webhook/transport/synchronous/tests/test_transport.py` that 
-   wraps a call to `send_webhook_request_sync` inside `transaction.atomic()` 
-   and asserts `logger.error` was called
+1. Add `connection` to the existing `from django.db import` statement in `saleor/webhook/transport/synchronous/transport.py`
+2. Add a `logger.warning` check with `stack_info=True` at the top of `send_webhook_request_sync`
+3. Add a unit test in `saleor/webhook/transport/synchronous/tests/test_transport.py`
 
-**Files to touch:**
-- `saleor/webhook/transport/synchronous/transport.py` (add logger check)
-- `saleor/webhook/transport/synchronous/tests/test_transport.py` (add test)
+**Files touched:**
+- `saleor/webhook/transport/synchronous/transport.py`
+- `saleor/webhook/transport/synchronous/tests/test_transport.py`
 
-**Review:** Will follow Saleor's CONTRIBUTING.md — run `ruff` for formatting, 
-use conventional commit message format, ensure all existing tests pass.
+**Review:** Followed Saleor's CONTRIBUTING.md — conventional commit message format, all existing tests pass.
 
-**Evaluate:** New unit test should pass confirming logger.error fires inside 
-a transaction. Existing test suite should show no regressions.
+**Evaluate:** New unit test confirms logger fires when called inside a transaction. All 7 tests passed.
 
 ## Phase III
 
-**Implementation Notes:** Added `connection.in_atomic_block` check inside `send_webhook_request_sync` in `saleor/webhook/transport/synchronous/transport.py`. Also added `connection` to the existing `from django.db import` statement.
+### Implementation Notes
+Added `connection.in_atomic_block` check inside `send_webhook_request_sync` in `saleor/webhook/transport/synchronous/transport.py`. Added `connection` to the existing `from django.db import` statement. Initially used `logger.error`, then updated to `logger.warning` with `stack_info=True` per maintainer feedback.
 
-**Testing Strategy:** Added 1 new unit test `test_send_webhook_request_sync_logs_error_inside_transaction` in `test_transport.py`. All 7 tests pass.
+### Testing Strategy
+Added 1 new unit test `test_send_webhook_request_sync_logs_error_inside_transaction` in `test_transport.py`. All 7 tests passed.
+
+**Test output:**
+================== 7 passed, 12 warnings in 279.96s (0:04:39) ==================
+
+### Code Changes
+https://github.com/anushadudella/saleor/tree/fix-issue-15138
 
 ## Phase IV
 
+### Pull Request
 **PR Link:** https://github.com/saleor/saleor/pull/19390
-**Status:** Awaiting review
-**Summary:** Added `connection.in_atomic_block` check in `send_webhook_request_sync` to log an error when sync webhooks are called inside a DB transaction. Includes 1 new unit test confirming the logger fires when called inside a transaction.
+**Status:** Closed (duplicate of existing contribution #19354)
+**Summary:** Added `connection.in_atomic_block` check in `send_webhook_request_sync` to log a warning when sync webhooks are called inside a DB transaction. Includes 1 new unit test confirming the logger fires when called inside a transaction.
 
-**Code Changes:** https://github.com/anushadudella/saleor/tree/fix-issue-15138
+### Maintainer Feedback Log
+| Date | Feedback | Response | Commits |
+|------|----------|----------|---------|
+| July 1, 2026 | Reviewer (wcislo-saleor) requested changing `logger.error` to `logger.warning` with `stack_info=True` to match async transport pattern and avoid triggering error-level incidents | Updated implementation and test accordingly | 4c4e407, 709068f |
+| July 1, 2026 | PR closed as duplicate of #19354 which covers the same fix | Documented outcome in README | — |
 
-**Maintainer Feedback:** Reviewer requested changing `logger.error` to `logger.warning` with `stack_info=True` to match async transport pattern. Updated and pushed in commits 4c4e407 and 709068f.
-**Status:** Awaiting review (updated per feedback)
+### Outcome
+PR received maintainer review, feedback was addressed (`logger.error` → `logger.warning` with `stack_info=True`), and PR was closed as a duplicate of an existing contribution. Implementation was correct and aligned with what the maintainer wanted.
 
-**Status:** Closed by maintainer (duplicate of #19354 which covers the same fix)
+## Learnings & Reflections
 
-**Outcome:** PR received maintainer review, feedback was addressed (logger.error → logger.warning with stack_info=True), and PR was closed as a duplicate of an existing contribution. Implementation was correct.
+**Technical gains:**
+- Learned how Django's `connection.in_atomic_block` works to detect active transactions at runtime
+- Gained experience navigating a large real-world Django/Python codebase (Saleor has 22,000+ commits)
+- Learned how to set up a full Docker-based local development environment from scratch
+- Understood the difference between `logger.error` and `logger.warning` and when to use `stack_info=True`
+
+**What I'd do differently:**
+- Check for existing open PRs on an issue before starting Phase III — another contributor had a draft PR (#19354) that I didn't notice until after I opened mine
+- Comment on the issue earlier to signal intent and check for duplicates
+- Include test output/console logs in the PR description from the start
+
+**Takeaway for future contributors:**
+Before opening a PR on a long-open issue, always search for open AND closed PRs referencing that issue number. Maintainers on large projects often have a preferred contributor already in mind.
