@@ -63,6 +63,15 @@ https://github.com/anushadudella/saleor/tree/fix-issue-15138
 **Status:** Closed (duplicate of existing contribution #19354)
 **Summary:** Added `connection.in_atomic_block` check in `send_webhook_request_sync` to log a warning when sync webhooks are called inside a DB transaction. Includes 1 new unit test confirming the logger fires when called inside a transaction.
 
+### Before/After Evidence
+
+**Before fix:** 6 tests passing, no transaction guard test existed, no warning emitted when sync webhook called inside transaction.
+
+**After fix — test output:**
+================== 7 passed, 12 warnings in 279.96s (0:04:39) ==================
+
+**New test added:** `test_send_webhook_request_sync_logs_error_inside_transaction` — confirms `logger.warning` fires when `send_webhook_request_sync` is called inside `transaction.atomic()`
+
 ### Maintainer Feedback Log
 | Date | Feedback | Response | Commits |
 |------|----------|----------|---------|
